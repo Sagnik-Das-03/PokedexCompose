@@ -2,15 +2,14 @@ package com.test.pokedex.pokemonlist
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,8 +28,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltNavGraphViewModel
 import androidx.navigation.NavController
@@ -66,6 +65,9 @@ fun PokemonListScreen(
             ) {
 
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            PokemonList(navController = navController)
         }
     }
 }
@@ -114,7 +116,46 @@ fun SearchBar(
 }
 
 @Composable
-fun PokedexEmtry(
+fun PokemonList(
+    navController: NavController,
+    viewModel: PokemonListViewModel = hiltNavGraphViewModel()
+) {
+    val pokemonList by remember { viewModel.pokemonList }
+    val  endReached by remember { viewModel.endReached }
+    val loadError by remember { viewModel.loadError }
+    val isLoading by remember { viewModel.isLoading }
+    
+    LazyColumn(contentPadding = PaddingValues(16.dp)) {
+        val itemCount = if(pokemonList.size % 2 == 0) {
+            pokemonList.size/2
+        } else {
+            pokemonList.size/2 + 1
+        }
+        items(itemCount) {
+            if(it >= itemCount - 1 && !endReached) {
+                viewModel.loadPokemonPaginated()
+            }
+            PokedexRow(rowIndex = it, entries = pokemonList, navController = navController)
+        }
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        if(isLoading) {
+            CircularProgressIndicator(color = MaterialTheme.colors.primary)
+        }
+        if(loadError.isNotEmpty()) {
+            retrySection(error = loadError) {
+                viewModel.loadPokemonPaginated()
+            }
+        }
+    }
+}
+
+@Composable
+fun PokedexEntry(
     entry: PokedexListEntry,
     navController: NavController,
     modifier: Modifier = Modifier,
@@ -127,7 +168,7 @@ fun PokedexEmtry(
     
     Box(
         contentAlignment = Center,
-        modifier = Modifier
+        modifier = modifier
             .shadow(5.dp, RoundedCornerShape(10.dp))
             .clip(RoundedCornerShape(10.dp))
             .aspectRatio(1f)
@@ -157,7 +198,7 @@ fun PokedexEmtry(
                     .build(),
                 contentDescription = entry.pokemonName,
                 fadeIn = true,
-                modifier = Modifier
+                modifier = modifier
                     .size(120.dp)
                     .align(CenterHorizontally)
             ) {
@@ -169,9 +210,9 @@ fun PokedexEmtry(
             Text(
                 text = entry.pokemonName,
                 fontFamily = RobotoCondensed,
-                fontSize = 20.sp,
+                fontSize = 24.sp,
                 textAlign = TextAlign.Center,
-                modifier =Modifier.fillMaxWidth()
+                modifier =Modifier.fillMaxWidth().padding(8.dp)
             )
         }
     }
@@ -185,14 +226,14 @@ fun PokedexRow (
 ) {
     Column {
         Row {
-            PokedexEmtry(
+            PokedexEntry(
                 entry = entries[rowIndex * 2],
                 navController = navController,
                 modifier = Modifier.weight(1f)
             )
             Spacer(modifier = Modifier.width(16.dp))
-            if(entries.size >= rowIndex * 2 +2) {
-                PokedexEmtry(
+            if(entries.size >= rowIndex * 2 + 2) {
+                PokedexEntry(
                     entry = entries[rowIndex * 2 + 1],
                     navController = navController,
                     modifier = Modifier.weight(1f)
@@ -202,5 +243,22 @@ fun PokedexRow (
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun retrySection(
+    error :String,
+    onRetry: ()-> Unit
+) {
+    Column {
+        Text(error, color = Color.Red, fontSize = 18.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = { onRetry() },
+            modifier = Modifier.align(CenterHorizontally)
+        ) {
+
+        }
     }
 }
